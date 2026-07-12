@@ -60,11 +60,7 @@ class WirelessSecurityAuditor:
         self.vault = {}
         try:
             out = subprocess.check_output("netsh wlan show profiles", shell=True, text=True, errors='ignore', timeout=10)
-            profiles = []
-            for line in out.split('\n'):
-                if "All User Profile" in line:
-                    parts = line.split(":")
-                    if len(parts) > 1: profiles.append(parts[1].strip())
+            profiles = [line.split(":")[1].strip() for line in out.split('\n') if "All User Profile" in line if len(line.split(":")) > 1]
             for ssid in profiles:
                 try:
                     info = subprocess.check_output(f'netsh wlan show profile name="{ssid}" key=clear', shell=True, text=True, errors='ignore', timeout=10)
@@ -87,8 +83,7 @@ class WirelessSecurityAuditor:
             ]
             for net in self.nearby_networks:
                 vulns, fixes = self.detect_vulnerabilities(net)
-                net['vulnerabilities'] = vulns
-                net['fixes'] = fixes
+                net['vulnerabilities'] = vulns; net['fixes'] = fixes
             return self.nearby_networks
 
         self.nearby_networks = []
@@ -145,5 +140,3 @@ if __name__ == "__main__":
     networks = auditor.scan_nearby_networks()
     for net in networks:
         print(f" -> SSID: {net['ssid']} | Auth: {net.get('auth')} | Vulns Found: {len(net.get('vulnerabilities', []))}")
-        for v in net.get('vulnerabilities', []):
-            print(f"    [!] {v['type']} ({v['severity']}): {v['description']}")
