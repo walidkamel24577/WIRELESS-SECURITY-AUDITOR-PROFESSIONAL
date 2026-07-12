@@ -33,15 +33,16 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y git zip unzip python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev sqlite3 bzip2 libbz2-dev liblzma-dev tk-dev build-essential g++
 
-    - name: Install Buildozer and Cython
+    # تثبيت المكتبات وتضمين kivy و cython حتى ينجح فحص الاختبار التلقائي للملف
+    - name: Install Buildozer, Cython and Kivy
       run: |
         python -m pip install --upgrade pip
-        pip install buildozer cython virtualenv
+        pip install buildozer cython virtualenv kivy zxcvbn
 
     - name: Test Python Script directly in Runner
       run: python main.py
 
-    # ربط مسار الـ SDK المرخص بملف إعدادات Buildozer لمنعها من إعادة التحميل والتوقف
+    # ربط مسار الـ SDK المرخص بملف إعدادات Buildozer لبناء الـ APK
     - name: Build APK with Buildozer
       run: |
         sed -i "s|# android.sdk_path =|android.sdk_path = $ANDROID_HOME|" buildozer.spec
