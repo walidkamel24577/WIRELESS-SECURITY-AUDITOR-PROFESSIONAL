@@ -18,10 +18,17 @@ jobs:
       with:
         python-version: '3.10'
 
+    # استخدام إصدار Java 17 وهو متطلب أساسي متوافق مع Android SDK الحديثة
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
     - name: Install Buildozer Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev sqlite3 bzip2 libbz2-dev liblzma-dev tk-dev build-essential g++
+        sudo apt-get install -y git zip unzip python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev sqlite3 bzip2 libbz2-dev liblzma-dev tk-dev build-essential g++
 
     - name: Install Buildozer and Cython
       run: |
@@ -31,8 +38,18 @@ jobs:
     - name: Test Python Script directly in Runner
       run: python main.py
 
+    # خطوة هامة: الموافقة التلقائية على شروط ورخص أندرويد لتجنب توقف خوادم جيت هاب
+    - name: Accept Android Licenses Automatically
+      run: |
+        mkdir -p ~/.android
+        touch ~/.android/repositories.cfg
+        # إنشاء ملف الموافقة المسبقة للرخص
+        mkdir -p /home/runner/.buildozer/android/platform/android-sdk/licenses
+        echo -e "244d2478ade40077f3e6f319085da75441f8d269\n85caf5d1d42f6c924d4c4383c3175c57bc5434a0\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0de7af1a06de9f4b1727b84351f2910\n43331a63b69ab34d26de3a7426ccc39b418e22f9\nd56f5187479451eabf01fb74314400a41d6d8ff6" > /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+
     - name: Build APK with Buildozer
-      run: buildozer android debug
+      # استخدام أمر الإدخال التلقائي "yes" للموافقة في حال ظهرت أي رخصة أخرى أثناء البناء
+      run: yes | buildozer android debug
       
     - name: Upload Finished APK Artifact
       uses: actions/upload-artifact@v4
