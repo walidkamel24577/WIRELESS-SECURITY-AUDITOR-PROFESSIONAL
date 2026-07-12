@@ -24,7 +24,7 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    # استخدام الأداة الرسمية لتهيئة الـ Android SDK والموافقة على الرخص تلقائياً
+    # الأداة الرسمية لتهيئة الـ Android SDK والموافقة على الرخص تلقائياً
     - name: Setup Android SDK and Accept Licenses
       uses: android-actions/setup-android@v3
 
@@ -41,13 +41,11 @@ jobs:
     - name: Test Python Script directly in Runner
       run: python main.py
 
-    # بناء التطبيق باستخدام الـ SDK المرخص والجاهز بالنظام
+    # ربط مسار الـ SDK المرخص بملف إعدادات Buildozer لمنعها من إعادة التحميل والتوقف
     - name: Build APK with Buildozer
       run: |
-        # ربط مسار الـ SDK المرخص بملف إعدادات Buildozer لمنعها من تحميل نسخة جديدة
         sed -i "s|# android.sdk_path =|android.sdk_path = $ANDROID_HOME|" buildozer.spec
-        
-        buildozer android debug
+        yes | buildozer android debug
 
     - name: Upload Finished APK Artifact
       uses: actions/upload-artifact@v4
