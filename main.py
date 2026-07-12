@@ -1,125 +1,149 @@
 # -*- coding: utf-8 -*-
 """
 GRADUATION PROJECT: WIRELESS SECURITY AUDITOR PROFESSIONAL
-FINAL MOBILE VERSION WITH KIVY GUI FOR ANDROID
+FINAL COMPREHENSIVE SUITE - SAVED PASSWORDS & LIVE SCANNER
 """
 import os
 import sys
 from datetime import datetime
 
-# استدعاء مكتبات واجهة مستخدم أندرويد (Kivy)
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
-from kivy.core.window import Window
+from kivy.utils import platform
 
-try:
-    from zxcvbn import zxcvbn
-    ZXCVBN_AVAILABLE = True
-except ImportError:
-    ZXCVBN_AVAILABLE = False
+if platform == 'android':
+    from android.permissions import request_permissions, Permission
+    from jnius import autoclass
 
 class WirelessSecurityAuditor:
     def __init__(self):
-        self.vault = {}
-        self.nearby_networks = []
+        pass
 
-    def analyze_password_strength(self, password):
-        if password == "[Open Network]":
-            return "OPEN", ["No password"], 0
-        if ZXCVBN_AVAILABLE:
-            res = zxcvbn(password)
-            score = res['score']
-            strength = ["VERY WEAK", "WEAK", "FAIR", "GOOD", "STRONG"][score]
-            feedback = res['feedback']['suggestions'] or ["No suggestions"]
-            return strength, feedback, score
-        else:
-            return "MEDIUM", ["Basic analysis fallback"], 3
+    def get_real_android_saved_passwords(self):
+        """القسم الأول: استخراج كلمات المرور للشبكات المحفوظة مسبقاً داخل الهاتف"""
+        saved_list = {}
+        if platform != 'android':
+            return {
+                "Home_Network": {"ssid": "Home_Network", "password": "SuperPassword2026", "auth": "WPA2"},
+                "Starbucks_Guest": {"ssid": "Starbucks_Guest", "password": "[Open Network]", "auth": "Open"}
+            }
+        try:
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            activity = PythonActivity.mActivity
+            Context = autoclass('android.content.Context')
+            wifi_manager = activity.getSystemService(Context.WIFI_SERVICE)
+            configured_networks = wifi_manager.getConfiguredNetworks()
+            
+            if configured_networks is not None:
+                for i in range(configured_networks.size()):
+                    config = configured_networks.get(i)
+                    ssid = config.SSID.replace('"', '')
+                    password = "[Protected]"
+                    if hasattr(config, 'preSharedKey') and config.preSharedKey:
+                        password = config.preSharedKey.replace('"', '')
+                    
+                    auth = "WPA/WPA2"
+                    if "NONE" in str(config.allowedKeyManagement):
+                        auth = "Open"
+                        password = "[Open Network]"
 
-    def get_all_saved_profiles(self):
-        # محاكاة مستقرة وآمنة متوافقة مع صلاحيات الأندرويد
-        self.vault = {
-            "test_home_wifi": {"ssid": "Secure_Home_Net", "password": "password123", "auth": "WPA2-Personal", "strength": "WEAK", "score": 1}
-        }
-        return self.vault
+                    saved_list[ssid.lower()] = {"ssid": ssid, "password": password, "auth": auth}
+        except Exception as e:
+            print(f"Error: {str(e)}")
+        return saved_list
 
-    def scan_nearby_networks(self):
-        # محاكاة فحص شبكات أندرويد لضمان عدم الانهيار
-        self.nearby_networks = [
-            {"ssid": "Unsecure_Coffee_Shop", "auth": "Open", "encrypt": "None", "vulnerabilities": [{"type": "Open Network", "severity": "CRITICAL", "description": "'Unsecure_Coffee_Shop' is OPEN"}]}
-        ]
-        return self.nearby_networks
+    def scan_live_nearby_networks(self):
+        """القسم الثاني: فحص واكتشاف الشبكات المحيطة بك فورياً في المكان الحالي"""
+        networks_list = []
+        if platform != 'android':
+            return [
+                {"ssid": "Nearby_Unsecured_Net", "auth": "Open", "level": -45},
+                {"ssid": "Target_Router_Private", "auth": "WPA3", "level": -85}
+            ]
+        try:
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            activity = PythonActivity.mActivity
+            Context = autoclass('android.content.Context')
+            wifi_manager = activity.getSystemService(Context.WIFI_SERVICE)
+            
+            scan_results = wifi_manager.getScanResults()
+            if scan_results is not None:
+                for i in range(scan_results.size()):
+                    result = scan_results.get(i)
+                    ssid = result.SSID
+                    capabilities = result.capabilities
+                    level = result.level
+                    
+                    if ssid:
+                        auth_type = "WPA/WPA2"
+                        if "WEP" in capabilities: auth_type = "WEP"
+                        elif "OPEN" in capabilities or ("NOT" in capabilities and "WPA" not in capabilities): auth_type = "Open"
+                        
+                        networks_list.append({"ssid": ssid, "auth": auth_type, "level": level})
+        except Exception as e:
+            print(f"Scan Error: {str(e)}")
+        return networks_list
 
-
-# بناء واجهة التطبيق التي ستظهر للمستخدم على الشاشة
 class AuditorWindow(BoxLayout):
     def __init__(self, **kwargs):
         super(AuditorWindow, self).__init__(**kwargs)
         self.orientation = 'vertical'
         self.padding = 20
         self.spacing = 15
+        
+        if platform == 'android':
+            request_permissions([Permission.ACCESS_FINE_LOCATION, Permission.ACCESS_COARSE_LOCATION])
 
-        # عنوان التطبيق العلوي
         self.title_label = Label(
-            text="[b]WIRELESS SECURITY AUDITOR[/b]", 
-            markup=True, 
-            font_size='22sp',
-            size_hint_y=None,
-            height=50
+            text="[b]WIRELESS AUDITOR & PASSWORDS VAULT[/b]", 
+            markup=True, font_size='18sp', size_hint_y=None, height=50
         )
         self.add_widget(self.title_label)
 
-        # زر بدء عملية الفحص
-        self.scan_btn = Button(
-            text="Start Security Audit", 
-            font_size='18sp',
-            size_hint_y=None,
-            height=60,
-            background_color=(0.1, 0.6, 0.8, 1)
-        )
-        self.scan_btn.bind(on_press=self.run_audit)
-        self.add_widget(self.scan_btn)
+        # أزرار التحكم والعمليات
+        self.btn_layout = BoxLayout(size_hint_y=None, height=60, spacing=10)
+        
+        self.vault_btn = Button(text="Show Saved Keys", font_size='14sp', background_color=(0.8, 0.2, 0.2, 1))
+        self.vault_btn.bind(on_press=self.display_saved)
+        self.btn_layout.add_widget(self.vault_btn)
+        
+        self.scan_btn = Button(text="Scan Active Air", font_size='14sp', background_color=(0.2, 0.6, 0.4, 1))
+        self.scan_btn.bind(on_press=self.display_live)
+        self.btn_layout.add_widget(self.scan_btn)
+        
+        self.add_widget(self.btn_layout)
 
-        # صندوق التمرير لعرض النتائج الطويلة دون تجميد الشاشة
         self.scroll = ScrollView()
         self.result_label = Label(
-            text="Click the button above to scan networks...", 
-            font_size='14sp', 
-            halign='left', 
-            valign='top',
-            size_hint_y=None
+            text="• Select 'Show Saved Keys' to look inside the device vault.\n• Select 'Scan Active Air' to sniff networks currently in range.", 
+            font_size='14sp', halign='left', valign='top', size_hint_y=None
         )
         self.result_label.bind(texture_size=self.result_label.setter('size'))
-        self.scroll.add_widget(self.result_label)
-        self.add_widget(self.scroll)
+        self.scroll.add_widget(self.scroll)
 
-    def run_audit(self, instance):
+    def display_saved(self, instance):
         auditor = WirelessSecurityAuditor()
-        output = f"Audit Report Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-        output += "="*40 + "\n\n"
-        
-        output += "[ Saved Profiles ]\n"
-        profiles = auditor.get_all_saved_profiles()
-        for ssid, data in profiles.items():
-            output += f" • SSID: {data['ssid']}\n   Strength: {data['strength']}\n\n"
-            
-        output += "[ Nearby Networks Scan ]\n"
-        networks = auditor.scan_nearby_networks()
-        for net in networks:
-            output += f" • SSID: {net['ssid']} (Auth: {net['auth']})\n"
-            if net['vulnerabilities']:
-                for v in net['vulnerabilities']:
-                    output += f"   [!] {v['type']} - {v['severity']}\n"
-                    
+        data = auditor.get_real_android_saved_passwords()
+        output = f"--- DEVICE PASSWORDS VAULT REPORT ({datetime.now().strftime('%H:%M')}) ---\n\n"
+        for k, v in data.items():
+            output += f" 🔐 SSID: {v['ssid']}\n 🔑 Key: {v['password']}\n 🛡️ Proto: {v['auth']}\n" + "-"*35 + "\n"
         self.result_label.text = output
 
+    def display_live(self, instance):
+        auditor = WirelessSecurityAuditor()
+        data = auditor.scan_live_nearby_networks()
+        output = f"--- LIVE WIRELESS ENVIRONMENTS DETECTED ({datetime.now().strftime('%H:%M')}) ---\n\n"
+        output += "Note: Real-time air passwords can't be fetched without brute-force.\n\n"
+        for net in data:
+            output += f" 📡 Network: {net['ssid']}\n   Security: {net['auth']} | Signal: {net['level']} dBm\n\n"
+        self.result_label.text = output
 
 class WirelessAuditorApp(App):
     def build(self):
         return AuditorWindow()
-
 
 if __name__ == "__main__":
     WirelessAuditorApp().run()
