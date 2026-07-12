@@ -6,13 +6,13 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 version = 1.0.0
 
-# المكتبات المطلوبة للتشغيل
+# المتطلبات الأساسية والمكتبات للتطبيق
 requirements = python3,kivy,zxcvbn
 
 orientation = portrait
 fullscreen = 1
 
-# الصلاحيات الأمنية المطلوبة في الأندرويد لفحص الشبكات
+# الصلاحيات الأمنية المطلوبة للوصول الصارم لأجهزة الراديو والواي فاي بالهاتف
 android.permissions = INTERNET, ACCESS_WIFI_STATE, CHANGE_WIFI_STATE, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION
 android.api = 33
 android.minapi = 21
