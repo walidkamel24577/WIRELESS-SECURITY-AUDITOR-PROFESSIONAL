@@ -13,10 +13,11 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.utils import platform
+from kivy.clock import Clock
 
 if platform == 'android':
     from android.permissions import request_permissions, Permission
-    from jnius import autoclass
+    from jnius import autoclass, cast
 
 class WirelessSecurityAuditor:
     def __init__(self):
@@ -40,6 +41,8 @@ class WirelessSecurityAuditor:
             if configured_networks is not None:
                 for i in range(configured_networks.size()):
                     config = configured_networks.get(i)
+                    if not config.SSID:
+                        continue
                     ssid = config.SSID.replace('"', '')
                     password = "[Protected]"
                     if hasattr(config, 'preSharedKey') and config.preSharedKey:
@@ -56,7 +59,7 @@ class WirelessSecurityAuditor:
         return saved_list
 
     def scan_live_nearby_networks(self):
-        """القسم الثاني: فحص واكتشاف الشبكات المحيطة بك فورياً في المكان الحالي"""
+        """القسم الثاني: إرسال أمر فحص فوري وجلب الشبكات المحيطة بك"""
         networks_list = []
         if platform != 'android':
             return [
@@ -68,6 +71,9 @@ class WirelessSecurityAuditor:
             activity = PythonActivity.mActivity
             Context = autoclass('android.content.Context')
             wifi_manager = activity.getSystemService(Context.WIFI_SERVICE)
+            
+            # تفعيل عملية الفحص بشكل نشط
+            wifi_manager.startScan()
             
             scan_results = wifi_manager.getScanResults()
             if scan_results is not None:
@@ -116,20 +122,27 @@ class AuditorWindow(BoxLayout):
         
         self.add_widget(self.btn_layout)
 
-        self.scroll = ScrollView()
+        # تصحيح الـ ScrollView بالكامل وإدراج النص داخله بشكل مرن
+        self.scroll = ScrollView(size_hint=(1, 1))
         self.result_label = Label(
             text="• Select 'Show Saved Keys' to look inside the device vault.\n• Select 'Scan Active Air' to sniff networks currently in range.", 
             font_size='14sp', halign='left', valign='top', size_hint_y=None
         )
-        self.result_label.bind(texture_size=self.result_label.setter('size'))
-        self.scroll.add_widget(self.scroll)
+        self.result_label.bind(texture_size=lambda instance, value: setattr(instance, 'height', value))
+        self.result_label.bind(width=lambda instance, value: setattr(instance, 'text_size', (value, None)))
+        
+        self.scroll.add_widget(self.result_label)
+        self.add_widget(self.scroll)
 
     def display_saved(self, instance):
         auditor = WirelessSecurityAuditor()
         data = auditor.get_real_android_saved_passwords()
         output = f"--- DEVICE PASSWORDS VAULT REPORT ({datetime.now().strftime('%H:%M')}) ---\n\n"
-        for k, v in data.items():
-            output += f" 🔐 SSID: {v['ssid']}\n 🔑 Key: {v['password']}\n 🛡️ Proto: {v['auth']}\n" + "-"*35 + "\n"
+        if not data:
+            output += "No saved networks found or execution blocked by System API restrictions.\n"
+        else:
+            for k, v in data.items():
+                output += f" 🔐 SSID: {v['ssid']}\n 🔑 Key: {v['password']}\n 🛡️ Proto: {v['auth']}\n" + "-"*35 + "\n"
         self.result_label.text = output
 
     def display_live(self, instance):
@@ -137,8 +150,11 @@ class AuditorWindow(BoxLayout):
         data = auditor.scan_live_nearby_networks()
         output = f"--- LIVE WIRELESS ENVIRONMENTS DETECTED ({datetime.now().strftime('%H:%M')}) ---\n\n"
         output += "Note: Real-time air passwords can't be fetched without brute-force.\n\n"
-        for net in data:
-            output += f" 📡 Network: {net['ssid']}\n   Security: {net['auth']} | Signal: {net['level']} dBm\n\n"
+        if not data:
+            output += "No networks detected. Please ensure that Location services (GPS) are turned ON."
+        else:
+            for net in data:
+                output += f" 📡 Network: {net['ssid']}\n   Security: {net['auth']} | Signal: {net['level']} dBm\n\n"
         self.result_label.text = output
 
 class WirelessAuditorApp(App):
