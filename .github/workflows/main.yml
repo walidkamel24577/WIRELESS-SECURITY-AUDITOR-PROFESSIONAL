@@ -1,8 +1,10 @@
-name: Build Android APK with Buildozer
+name: Build Wireless Auditor APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
@@ -10,42 +12,33 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout Repository
+    - name: Checkout Source Code
       uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Setup Python Environment
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
-    # الأداة الرسمية المعتمدة لتهيئة الـ SDK والموافقة على جميع تراخيص جوجل تلقائياً
-    - name: Setup Android SDK and Accept Licenses
-      uses: android-actions/setup-android@v3
-
     - name: Install System Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y git zip unzip python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev sqlite3 bzip2 libbz2-dev liblzma-dev tk-dev build-essential g++
+        sudo apt-get install -y libsqlite3-dev gapc autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libaeon-dev
+        sudo apt-get install -y python3-pip python3-setuptools python3-dev
+        sudo apt-get install -y openjdk-17-jdk unzip zip
 
     - name: Install Buildozer and Cython
       run: |
-        python -m pip install --upgrade pip
+        pip install --upgrade pip
         pip install buildozer cython virtualenv
 
-    # حقن مسار الـ SDK المرخص والمثبت مسبقاً داخل إعدادات buildozer لبناء التطبيق مباشرة
-    - name: Build APK with Buildozer
+    - name: Build Android APK with Buildozer
       run: |
-        sed -i "s|# android.sdk_path =|android.sdk_path = $ANDROID_HOME|" buildozer.spec
+        # أمر بناء التطبيق التلقائي مع الموافقة على شروط الأندرويد SDK
         yes | buildozer android debug
 
     - name: Upload Finished APK Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/artifacts@v4
       with:
-        name: NetworkAuditor-Package
+        name: Wireless-Security-Auditor-APK
         path: bin/*.apk
