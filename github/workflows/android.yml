@@ -37,8 +37,9 @@ jobs:
         # أمر بناء التطبيق التلقائي مع الموافقة على شروط الأندرويد SDK
         yes | buildozer android debug
 
+    # --- تم تصحيح الجزء المسؤول عن استخراج الملف هنا ---
     - name: Upload Finished APK Artifact
-      uses: actions/artifacts@v4
+      uses: actions/upload-artifact@v4
       with:
         name: Wireless-Security-Auditor-APK
         path: bin/*.apk
